@@ -30,14 +30,20 @@ const (
 	defaultTcpsPort = 8081
 )
 
+var (
+	skipVerify, compress bool
+	port int
+	addr, caFile, certFile, keyFile, realm, scheme, serType string
+)
+
 func NewClient(logger *log.Logger) (*client.Client, error) {
-	var (
-		skipVerify, compress bool
 
-		port int
+	ParseArgs()
 
-		addr, caFile, certFile, keyFile, realm, scheme, serType string
-	)
+	return MyNewClient(logger)
+}
+
+func ParseArgs() {
 	flag.StringVar(&addr, "addr", "",
 		fmt.Sprintf("router address. (default %q or %q for network or unix socket)", defaultAddr, defaultUnix))
 	flag.IntVar(&port, "port", 0,
@@ -55,6 +61,9 @@ func NewClient(logger *log.Logger) (*client.Client, error) {
 		"private key file with PEM encoded data")
 	flag.BoolVar(&compress, "compress", false, "enable websocket compression")
 	flag.Parse()
+}
+
+func MyNewClient(logger *log.Logger) (*client.Client, error) {
 
 	// Get requested serialization.
 	serialization := client.JSON
@@ -70,11 +79,12 @@ func NewClient(logger *log.Logger) (*client.Client, error) {
 			"invalid serialization, muse be one of: json, msgpack, cbor")
 	}
 
-	if addr == "" {
+	cli_addr := addr
+	if cli_addr == "" {
 		if scheme == "unix" {
-			addr = defaultUnix
+			cli_addr = defaultUnix
 		} else {
-			addr = defaultAddr
+			cli_addr = defaultAddr
 		}
 	}
 
@@ -144,32 +154,34 @@ func NewClient(logger *log.Logger) (*client.Client, error) {
 		if port == 0 {
 			port = defaultWsPort
 		}
-		addr = fmt.Sprintf("ws://%s:%d/ws", addr, port)
+		cli_addr = fmt.Sprintf("ws://%s:%d/ws", cli_addr, port)
 	case "https", "wss":
 		if port == 0 {
 			port = defaultWssPort
 		}
-		addr = fmt.Sprintf("wss://%s:%d/ws", addr, port)
+		cli_addr = fmt.Sprintf("wss://%s:%d/ws", cli_addr, port)
 	case "tcp":
 		if port == 0 {
 			port = defaultTcpPort
 		}
-		addr = fmt.Sprintf("tcp://%s:%d/", addr, port)
+		cli_addr = fmt.Sprintf("tcp://%s:%d/", cli_addr, port)
 	case "tcps":
 		if port == 0 {
 			port = defaultTcpsPort
 		}
-		addr = fmt.Sprintf("tcps://%s:%d/", addr, port)
+		cli_addr = fmt.Sprintf("tcps://%s:%d/", cli_addr, port)
 	case "unix":
-		addr = fmt.Sprintf("unix://%s", addr)
+		cli_addr = fmt.Sprintf("unix://%s", cli_addr)
 	default:
 		return nil, errors.New("scheme must be one of: http, https, ws, wss, tcp, tcps, unix")
 	}
-	cli, err = client.ConnectNet(addr, cfg)
+	logger.Println("Connecting to", cli_addr, "using", serType, "serialization")
+
+	cli, err = client.ConnectNet(cli_addr, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Println("Connected to", addr, "using", serType, "serialization")
+	logger.Println("Connected to", cli_addr, "using", serType, "serialization")
 	return cli, nil
 }
