@@ -3,6 +3,7 @@ package wamp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -51,6 +52,7 @@ func TrySend(wr chan<- Message, msg Message) error {
 	select {
 	case wr <- msg:
 	default:
+                fmt.Printf("blocked len %d", len(wr))
 		return errors.New("blocked")
 	}
 	return nil

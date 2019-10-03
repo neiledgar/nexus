@@ -6,7 +6,7 @@ import (
 	"github.com/gammazero/nexus/wamp"
 )
 
-const linkedPeersOutQueueSize = 16
+const linkedPeersOutQueueSize = 128
 
 // LinkedPeers creates two connected peers.  Messages sent to one peer appear
 // in the Recv of the other.  This is used for connecting client sessions to
